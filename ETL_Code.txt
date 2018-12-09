@@ -1,0 +1,315 @@
+FATO:
+
+// tabela com escolas
+LOAD
+
+       TEXT(trim(CO_ENTIDADE))												AS CO_ENTIDADE,
+       NO_ENTIDADE,
+        TEXT(TRIM(CO_MUNICIPIO))											AS CO_MUNICIPIO,
+      
+	// tratamento de localização
+    IF(TP_LOCALIZACAO = 1, 'Urbana','Rural')   								AS TIPO_LOCALIAZCAO_ESCOLA,
+
+    // tratamento do tipo de convenio existente na escola
+    IF(TP_CONVENIO_PODER_PUBLICO = 1,'Municipal',
+    	IF(TP_CONVENIO_PODER_PUBLICO = 2,'Estadual',
+        	IF(TP_CONVENIO_PODER_PUBLICO = 2,'Estadual e Municipal')))		AS CONVENIO_ESCOLA
+  
+
+
+FROM [lib://CensoEscolar/Microdados_Censo_Escolar_2017\DADOS\ESCOLAS.CSV]
+(txt, codepage is 28591, embedded labels, delimiter is '|', msq) where len(CO_ENTIDADE)>=1 AND TP_DEPENDENCIA <> 4; // where para limpar os cadastros não preechidos das escolas
+
+LEFT Join
+
+LOAD TEXT(TRIM(ID))					AS CO_MUNICIPIO, 
+     UF, 
+     NomeMunicipio,
+     NomeMunicipio&' - '&UF 		AS [Mun/UF]
+FROM [lib://CensoEscolar/Mapa\QVD-Maps\amapa_Atributos.qvd]
+(qvd);
+
+left Join
+
+LOAD
+	Text(trim(Left(CO_ESCOLA,Index(CO_ESCOLA,'.')-1)))								AS CO_ENTIDADE,
+    CHECK_1,
+    CHECK_10,
+    CHECK_11,
+    CHECK_12,
+    CHECK_13,
+    CHECK_14,
+    CHECK_15,
+    CHECK_16,
+    CHECK_17,
+    CHECK_18,
+    CHECK_19,
+    CHECK_2,
+    CHECK_20,
+    CHECK_21,
+    CHECK_22,
+    CHECK_23,
+    CHECK_24,
+    CHECK_25,
+    CHECK_26,
+    CHECK_27,
+    CHECK_28,
+    CHECK_29,
+    CHECK_3,
+    CHECK_30,
+    CHECK_31,
+    CHECK_32,
+    CHECK_33,
+    CHECK_34,
+    CHECK_35,
+    CHECK_36,
+    CHECK_37,
+    CHECK_38,
+    CHECK_39,
+    CHECK_4,
+    CHECK_40,
+    CHECK_41,
+    CHECK_42,
+    CHECK_43,
+    CHECK_44,
+    CHECK_45,
+    CHECK_5,
+    CHECK_6,
+    CHECK_7,
+    CHECK_8,
+    CHECK_9,
+    CO_PROVA_MT,
+    NU_INSCRICAO,
+    TX_GABARITO_MT,
+    TX_RESPOSTAS_MT,
+    ACERTOS
+FROM [lib://CensoEscolar/ENEM_ACERTOS_QUESTOES_20180912_0300.csv]
+(txt, utf8, embedded labels, delimiter is ';', msq) Where Len(CO_ESCOLA)>=1;
+
+LEFT Join
+
+// tabela com as turmas
+LOAD
+	   TEXT(TRIM(CO_ENTIDADE))												AS CO_ENTIDADE,
+	   ID_TURMA,
+       // agrupamento do numero de matriculas por turma e escola
+    Sum(NU_MATRICULAS)															as NU_MATRICULAS,
+    
+    // tratamento Tipo de mediação didático-pedagógica
+    IF(TP_MEDIACAO_DIDATICO_PEDAGO = 1, 'Presencial',
+    	IF(TP_MEDIACAO_DIDATICO_PEDAGO = 2, 'Semipresencial',
+        	IF(TP_MEDIACAO_DIDATICO_PEDAGO = 3, 'Educação a Distância - EAD'
+           )
+         )
+       )																		as TP_MEDIACAO_DIDATICO_PEDAGO,
+    
+ 		// Aluno de turma exclusiva de alunos com deficiência, transtorno global do desenvolvimento ou altas habilidades/superdotação (Classes Especiais)
+        IF(IN_ESPECIAL_EXCLUSIVA = 1, 'Sim','Não')								as IN_ESPECIAL_EXCLUSIVA,
+
+//     CO_UF,
+   // tratamento Dependência Administrativa (Escola)
+    IF(TP_DEPENDENCIA = 1,'Federal',
+    	IF(TP_DEPENDENCIA = 2,'Comunitária',
+        	IF(TP_DEPENDENCIA = 3,'Municipal',
+            	IF(TP_DEPENDENCIA = 4,'Privada'
+                )
+              )
+            )
+         )																		as TP_DEPENDENCIA,
+         
+       //  Tratamento localização
+     IF(TP_LOCALIZACAO = 1,'Urbana',
+    	IF(TP_LOCALIZACAO = 2,'Rural'
+           )
+        )																		as TP_LOCALIZACAO,
+        
+       // TP_CATEGORIA_ESCOLA_PRIVADA
+      IF(TP_CATEGORIA_ESCOLA_PRIVADA = 1,'Particular',
+    	IF(TP_CATEGORIA_ESCOLA_PRIVADA = 2,'Comunitária',
+        	IF(TP_CATEGORIA_ESCOLA_PRIVADA = 3,'Confessional',
+            	IF(TP_CATEGORIA_ESCOLA_PRIVADA = 4,'Filantrópica'
+                )
+              )
+            )
+         )																		as TP_CATEGORIA_ESCOLA_PRIVADA,
+         
+        // Categoria da escola privada 
+    IF(IN_CONVENIADA_PP = 1,'Sim','Não')										as IN_CONVENIADA_PP,
+    IF(TP_CONVENIO_PODER_PUBLICO = 1 ,'Municipal',
+    	IF(TP_CONVENIO_PODER_PUBLICO = 1 ,'Estadual',
+        	IF(TP_CONVENIO_PODER_PUBLICO = 1 ,'Estadual e Municipal'
+           	)
+           )
+         )																		as TP_CONVENIO_PODER_PUBLICO,
+         
+    // Mantenedora da escola privada - Empresa, grupo empresarial do setor privado ou pessoa física
+    IF(IN_MANT_ESCOLA_PRIVADA_EMP = 1,'Sim','Não')								as IN_MANT_ESCOLA_PRIVADA_EMP,
+    
+    IF(IN_MANT_ESCOLA_PRIVADA_ONG = 1,'Sim','Não')								as IN_MANT_ESCOLA_PRIVADA_ONG,
+    
+    IF(IN_MANT_ESCOLA_PRIVADA_SIND = 1,'Sim','Não')								as IN_MANT_ESCOLA_PRIVADA_SIND,
+
+	IF(IN_MANT_ESCOLA_PRIVADA_SIST_S = 1,'Sim','Não')							as IN_MANT_ESCOLA_PRIVADA_SIST_S,
+    
+    IF(IN_MANT_ESCOLA_PRIVADA_S_FINS = 1,'Sim','Não')							as IN_MANT_ESCOLA_PRIVADA_S_FINS
+   
+FROM [lib://CensoEscolar/Microdados_Censo_Escolar_2017\DADOS\TURMAS.CSV]
+(txt, codepage is 28591, embedded labels, delimiter is '|', msq)
+Where WildMatch(TP_ETAPA_ENSINO,'65','69','70') and not WildMatch(TP_TIPO_TURMA, '4','5')
+group by 
+ID_TURMA,
+TP_MEDIACAO_DIDATICO_PEDAGO,
+IN_ESPECIAL_EXCLUSIVA,
+CO_ENTIDADE,
+// CO_UF,
+TP_DEPENDENCIA,
+TP_LOCALIZACAO,
+TP_CATEGORIA_ESCOLA_PRIVADA,
+IN_CONVENIADA_PP,
+TP_CONVENIO_PODER_PUBLICO,
+IN_MANT_ESCOLA_PRIVADA_EMP,
+IN_MANT_ESCOLA_PRIVADA_ONG,
+IN_MANT_ESCOLA_PRIVADA_SIND,
+IN_MANT_ESCOLA_PRIVADA_SIST_S,
+IN_MANT_ESCOLA_PRIVADA_S_FINS;
+
+
+ Left Join
+
+// tabela de matriculas 
+LOAD
+	ID_TURMA,
+    ID_MATRICULA,
+    CO_PESSOA_FISICA,
+    NU_IDADE_REFERENCIA,
+    NU_IDADE,
+    
+   // Número de dias por semana em que são realizadas as atividades da turma
+   IF(NU_DIAS_ATIVIDADE = 1,'Uma vez por semana',
+   	 IF(NU_DIAS_ATIVIDADE = 2,'Duas vezes por semana',
+     	 IF(NU_DIAS_ATIVIDADE = 3,'Três vezes por semana',
+         	 IF(NU_DIAS_ATIVIDADE = 4,'Quatro vezes por semana',
+             	 IF(NU_DIAS_ATIVIDADE = 5,'Cinco vezes por semana',
+                 	 IF(NU_DIAS_ATIVIDADE = 6,'Seis vezes por semana',
+                     	IF(NU_DIAS_ATIVIDADE = 6,'Sete vezes por semana'
+                       	)
+                      )
+                    )
+                  )
+                )
+              )
+            )																		as NU_DIAS_ATIVIDADE,
+              
+   // definição de sexo
+    IF(TP_SEXO=1,'Masculino','Feminino')											as TP_SEXO_ALUNO,
+    // definição de genero
+    IF(TP_COR_RACA =0,'Não declarada',
+    	IF(TP_COR_RACA =1,'Branca',
+        	IF(TP_COR_RACA =2,'Preta',
+            	IF(TP_COR_RACA =3,'Parda',
+                	IF(TP_COR_RACA =3,'Amarela',
+                    	IF(TP_COR_RACA =3,'Indígena'))))))							as TP_COR_RACA_ALUNO
+    
+ 
+FROM [lib://CensoEscolar/Microdados_Censo_Escolar_2017\DADOS\MATRICULA_SUDESTE.CSV]
+(txt, codepage is 28591, embedded labels, delimiter is '|', msq);
+
+
+left Join
+
+// tabela referente aos docentes
+LOAD
+	ID_TURMA,
+    // tratamento para idade do docente
+    IF(Len(NU_IDADE_REFERENCIA)>=1,NU_IDADE_REFERENCIA,NU_IDADE)					AS IDADE_DOCENTE,
+//     tratamento sexo docente,
+     IF(TP_SEXO=1,'Masculino','Feminino')											AS SEXO_DOCENTE,
+       IF(TP_COR_RACA =0,'Não declarada',
+    	 IF(TP_COR_RACA =1,'Branca',
+        	IF(TP_COR_RACA =2,'Preta',
+            	IF(TP_COR_RACA =3,'Parda',
+                	IF(TP_COR_RACA =3,'Amarela',
+                    	IF(TP_COR_RACA =3,'Indígena'))))))							AS TP_COR_RACA_DOCENTE,
+     // tipo de zona                   
+    IF(TP_ZONA_RESIDENCIAL = 1,'Urbana','Rural')									AS TP_ZONA_RESIDENCIAL,
+   
+   // tratamento da Escolaridade do docente
+   IF(TP_ESCOLARIDADE = 1,'Fundamental incompleto',
+    	 IF(TP_ESCOLARIDADE = 2,'Fundamental completo',
+         	 IF(TP_ESCOLARIDADE = 3,'Ensino Médio completo',
+             	 IF(TP_ESCOLARIDADE = 4,'Superior completo'
+                )
+             )
+           )
+        )															AS ESCOLARIDADE_DOCENTE,
+
+		// Docente possui ensino médio normal/magistério.
+	   IF(TP_NORMAL_MAGISTERIO = 0,'Não',
+       		IF(TP_NORMAL_MAGISTERIO = 1,'Sim',
+        		IF(TP_NORMAL_MAGISTERIO = 2, 'Sim - específico indígena',
+                	IF(TP_NORMAL_MAGISTERIO = 3, 'Não disponível (docente com superior em andamento ou concluído)')
+                   )
+                )
+                
+             )														AS TP_NORMAL_MAGISTERIO,
+       
+       // Situação do curso superior 1 
+	   IF(TP_SITUACAO_CURSO_1,'Concluido', 'Em Andamento')			AS TP_SITUACAO_CURSO_1,
+
+		// capacidade do docente
+        IF(IN_DISC_QUIMICA = 1, 'Sim','Não')					as IN_DISC_QUIMICA,
+        IF(IN_DISC_FISICA= 1, 'Sim','Não')						as IN_DISC_FISICA,
+        IF(IN_DISC_MATEMATICA= 1, 'Sim','Não')					as IN_DISC_MATEMATICA,
+        IF(IN_DISC_BIOLOGIA= 1, 'Sim','Não')					as IN_DISC_BIOLOGIA,
+        IF(IN_DISC_CIENCIAS= 1, 'Sim','Não')					as IN_DISC_CIENCIAS,
+        IF(IN_DISC_LINGUA_PORTUGUESA= 1, 'Sim','Não')			as IN_DISC_LINGUA_PORTUGUESA,
+        IF(IN_DISC_LINGUA_INGLES= 1, 'Sim','Não')				as IN_DISC_LINGUA_INGLES,
+        IF(IN_DISC_LINGUA_ESPANHOL= 1, 'Sim','Não')				as IN_DISC_LINGUA_ESPANHOL,
+        IF(IN_DISC_LINGUA_FRANCES= 1, 'Sim','Não')				as IN_DISC_LINGUA_FRANCES,
+        IF(IN_DISC_LINGUA_OUTRA= 1, 'Sim','Não')				as IN_DISC_LINGUA_OUTRA,
+        IF(IN_DISC_LINGUA_INDIGENA= 1, 'Sim','Não')				as IN_DISC_LINGUA_INDIGENA,
+        IF(IN_DISC_ARTES= 1, 'Sim','Não')						as IN_DISC_ARTES,
+        IF(IN_DISC_EDUCACAO_FISICA= 1, 'Sim','Não')				as IN_DISC_EDUCACAO_FISICA,
+        IF(IN_DISC_HISTORIA= 1, 'Sim','Não')					as IN_DISC_HISTORIA,
+        IF(IN_DISC_GEOGRAFIA= 1, 'Sim','Não')					as IN_DISC_GEOGRAFIA,
+        IF(IN_DISC_FILOSOFIA= 1, 'Sim','Não')					as IN_DISC_FILOSOFIA,
+        IF(IN_DISC_ENSINO_RELIGIOSO= 1, 'Sim','Não')			as IN_DISC_ENSINO_RELIGIOSO,
+        IF(IN_DISC_ESTUDOS_SOCIAIS= 1, 'Sim','Não')				as IN_DISC_ESTUDOS_SOCIAIS,
+        IF(IN_DISC_SOCIOLOGIA= 1, 'Sim','Não')					as IN_DISC_SOCIOLOGIA,
+        IF(IN_DISC_EST_SOCIAIS_SOCIOLOGIA= 1, 'Sim','Não')		as IN_DISC_EST_SOCIAIS_SOCIOLOGIA,
+        IF(IN_DISC_INFORMATICA_COMPUTACAO= 1, 'Sim','Não')		as IN_DISC_INFORMATICA_COMPUTACAO,
+        IF(IN_DISC_PROFISSIONALIZANTE= 1, 'Sim','Não')			as IN_DISC_PROFISSIONALIZANTE,
+        IF(IN_ESPECIALIZACAO = 1, 'Sim','Não')					as IN_ESPECIALIZACAO,
+        IF(IN_MESTRADO = 1, 'Sim','Não')						as IN_MESTRADO,
+        IF(IN_DOUTORADO = 1, 'Sim','Não')						as IN_DOUTORADO,
+        IF(IN_ESPECIFICO_ANOS_INICIAIS = 1, 'Sim','Não')		AS IN_ESPECIFICO_ANOS_INICIAIS,
+        IF(IN_ESPECIFICO_ANOS_FINAIS = 1, 'Sim','Não')			AS IN_ESPECIFICO_ANOS_FINAIS,			
+        IF(IN_ESPECIFICO_ENS_MEDIO = 1, 'Sim','Não')			AS IN_ESPECIFICO_ENS_MEDIO,
+        IF(IN_ESPECIFICO_EJA = 1, 'Sim','Não')					AS IN_ESPECIFICO_EJA,
+        
+        // Função que exerce na escola
+       IF(TP_TIPO_DOCENTE = 1, 'Docente',
+       		IF(TP_TIPO_DOCENTE = 1, 'Auxiliar/Assistente Educacional',
+            	IF(TP_TIPO_DOCENTE = 1, 'Profissional/Monitor de atividade complementar',
+                	IF(TP_TIPO_DOCENTE = 1, 'Tradutor Intérprete de Libras',
+                    	IF(TP_TIPO_DOCENTE = 1, 'Docente Titular - coordenador de tutoria - EAD',
+                        	IF(TP_TIPO_DOCENTE = 1, 'Docente Tutor - Auxiliar - EAD')
+                            ))))) as TP_TIPO_DOCENTE, 
+     
+     // Situação Funcional/Regime de contratação/Tipo de Vínculo (Apenas para docente de escola pública)
+     
+    IF(TP_TIPO_CONTRATACAO = 1, 'Concursado/efetivo/estável',
+    	IF(TP_TIPO_CONTRATACAO = 1, 'Contrato temporário',
+        	IF(TP_TIPO_CONTRATACAO = 1, 'Contrato terceirizado',
+            	IF(TP_TIPO_CONTRATACAO = 1, 'Contrato CLT'))))				AS TP_TIPO_CONTRATACAO,
+
+       IN_EDUCACAO_INDIGENA
+FROM [lib://CensoEscolar/Microdados_Censo_Escolar_2017\DADOS\DOCENTES_SUDESTE.CSV]
+(txt, codepage is 28591, embedded labels, delimiter is '|', msq);
+
+
+
+// salvamento do dataset 
+Store FATO INTO [lib://CensoEscolar/ENEM_ACERTOS_QUESTOES\base.csv] (txt);
+
+Drop Table FATO;
